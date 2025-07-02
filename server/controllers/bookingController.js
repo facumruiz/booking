@@ -1,60 +1,21 @@
 // controllers/bookingController.js
-import Booking from '../models/bookingModel.js';
-import nodemailer from 'nodemailer';
-import crypto from 'crypto';
+import {
+    createBooking as create,
+    confirmBooking as confirm,
+    rejectBooking as reject
+} from '../core/bookingService.js';
 
-// Configurar transporte de nodemailer
-const transporter = nodemailer.createTransport({
-    service: 'Gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+import { sendBookingEmail } from '../channels/email/emailNotifier.js';
 
-// Crear un nuevo turno
 const createBooking = async (req, res) => {
-
     try {
         const { user, fullName, email, reason, date, time } = req.body;
 
-        // Crear token único para confirmar/rechazar turno
-        const confirmationToken = crypto.randomBytes(32).toString('hex');
-
-        const newBooking = new Booking({
-            user,
-            fullName,
-            email,
-            reason,
-            date,
-            time,
-            confirmationToken,
+        const { booking, confirmationToken } = await create({
+            user, fullName, email, reason, date, time,
         });
 
-        await newBooking.save();
-
-        // URL de confirmación y rechazo
-        const confirmUrl = `${process.env.FRONT_URL}/booking/confirm/${confirmationToken}`;
-        const rejectUrl = `${process.env.FRONT_URL}/booking/reject/${confirmationToken}`;
-
-        // Enviar correo al dueño (admin)
-        await transporter.sendMail({
-            from: '"Turnero" <miapp@example.com>',
-            to: `${email}, ${process.env.ADMIN_EMAIL}`,// mail del dueño
-            subject: 'Nuevo turno pendiente de confirmación',
-            html: `
-                <h3>Nuevo turno solicitado</h3>
-                <p><strong>Nombre:</strong> ${fullName}</p>
-                <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Motivo:</strong> ${reason}</p>
-                <p><strong>Fecha:</strong> ${date}</p>
-                <p><strong>Hora:</strong> ${time}</p>
-                <p>
-                    <a href="${confirmUrl}">✅ Confirmar turno</a><br>
-                    <a href="${rejectUrl}">❌ Rechazar turno</a>
-                </p>
-            `,
-        });
+        await sendBookingEmail({ booking, confirmationToken });
 
         res.status(201).json({ message: 'Turno creado y pendiente de confirmación' });
 
@@ -63,17 +24,10 @@ const createBooking = async (req, res) => {
     }
 };
 
-
-
-// Confirmar turno
 const confirmBooking = async (req, res) => {
     try {
-        const booking = await Booking.findOne({ confirmationToken: req.params.token });
+        const booking = await confirm(req.params.token);
         if (!booking) return res.status(404).json({ message: 'Token inválido' });
-
-        booking.status = 'confirmed';
-        booking.confirmationToken = undefined;
-        await booking.save();
 
         res.send('<h2>✅ Turno confirmado con éxito</h2>');
     } catch (err) {
@@ -81,15 +35,10 @@ const confirmBooking = async (req, res) => {
     }
 };
 
-// Rechazar turno
 const rejectBooking = async (req, res) => {
     try {
-        const booking = await Booking.findOne({ confirmationToken: req.params.token });
+        const booking = await reject(req.params.token);
         if (!booking) return res.status(404).json({ message: 'Token inválido' });
-
-        booking.status = 'rejected';
-        booking.confirmationToken = undefined;
-        await booking.save();
 
         res.send('<h2>❌ Turno rechazado</h2>');
     } catch (err) {
