@@ -6,6 +6,7 @@ import {
 } from '../core/bookingService.js';
 
 import { sendBookingEmail } from '../channels/email/emailNotifier.js';
+import { sendBookingWhatsapp } from '../channels/whatsapp/whatsappNotifier.js';
 
 const createBooking = async (req, res) => {
     try {
@@ -15,7 +16,9 @@ const createBooking = async (req, res) => {
             user, fullName, email, reason, date, time,
         });
 
+        // Enviar notificaciones
         await sendBookingEmail({ booking, confirmationToken });
+        await sendBookingWhatsapp({ booking, confirmationToken }); // << AGREGADO
 
         res.status(201).json({ message: 'Turno creado y pendiente de confirmación' });
 
