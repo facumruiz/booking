@@ -15,23 +15,29 @@ const sendBookingEmail = async ({ booking, confirmationToken }) => {
     const confirmUrl = `${process.env.FRONT_URL}/booking/confirm/${confirmationToken}`;
     const rejectUrl = `${process.env.FRONT_URL}/booking/reject/${confirmationToken}`;
 
-    await transporter.sendMail({
-        from: '"Turnero" <miapp@example.com>',
-        to: `${email}, ${process.env.ADMIN_EMAIL}`,
-        subject: 'Nuevo turno pendiente de confirmación',
-        html: `
-            <h3>Nuevo turno solicitado</h3>
-            <p><strong>Nombre:</strong> ${fullName}</p>
-            <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Motivo:</strong> ${reason}</p>
-            <p><strong>Fecha:</strong> ${date}</p>
-            <p><strong>Hora:</strong> ${time}</p>
-            <p>
-                <a href="${confirmUrl}">✅ Confirmar turno</a><br>
-                <a href="${rejectUrl}">❌ Rechazar turno</a>
-            </p>
-        `,
-    });
+    try {
+        await transporter.sendMail({
+            from: '"Turnero" <miapp@example.com>',
+            to: `${email}, ${process.env.ADMIN_EMAIL}`,
+            subject: 'Nuevo turno pendiente de confirmación',
+            html: `
+                <h3>Nuevo turno solicitado</h3>
+                <p><strong>Nombre:</strong> ${fullName}</p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Motivo:</strong> ${reason}</p>
+                <p><strong>Fecha:</strong> ${date}</p>
+                <p><strong>Hora:</strong> ${time}</p>
+                <p>
+                    <a href="${confirmUrl}">✅ Confirmar turno</a><br>
+                    <a href="${rejectUrl}">❌ Rechazar turno</a>
+                </p>
+            `,
+        });
+
+        console.log(`📧 Email enviado correctamente a ${email} y ${process.env.ADMIN_EMAIL}`);
+    } catch (error) {
+        console.error('❌ Error al enviar el email:', error.message);
+    }
 };
 
 export { sendBookingEmail };
